@@ -12,18 +12,22 @@ voice = engine.getProperty("voice")
 # set the voice property
 engine.setProperty("voice", voice[1])  # 0 for male  1 for female
 # an wakeuo word
-activationWord = "bingo"
+activationWord = "computer"
 
 # selecting the browser
 # set the path for the browser
-chromePath = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
-edgePath = r''
-# register the browser to the webbrowser so that you can choose later
-webbrowser.register("chrome",None,webbrowser.BackgroundBrowser(chromePath))
+bravePath = r"C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe"
+# register the browser to the web browser so that you can choose later
+webbrowser.register("brave", None, webbrowser.BackgroundBrowser(bravePath))
+
+# get the Wolframaplha appid
+appId = "LG83QG-LUYGLTUR6L"
+# activating the wolframaplha id
+wolframClient = wolframalpha.Client(appId)
 
 
 # function for speaking
-def speakUp(text, rate=120):  # rate at which the AI will say
+def speakUp(text, rate=160):  # rate at which the AI will say
     engine.setProperty("rate", rate)
     # make the AI speak
     engine.say(text)
@@ -60,9 +64,66 @@ def takeCommand():
 
         print(exception)
         return "None"
-    print("query-->> ",query)
+    print("query-->> ", query)
     return query
 
+
+# search on wikipedia
+def search_wikipedia(query):
+    searchResults = wikipedia.search(query)  # collecting the search in an array
+    if not searchResults:
+        print('Sorry, Nothing found related to your query.')
+        speakUp("Sorry, Nothing found related to our query.")
+        return
+    try:
+        wikiPage = wikipedia.page(searchResults[0])
+    except wikipedia.DisambiguationError as error:
+        wikiPage.page(error.options[0])  # if error ocurrs we take the first error
+    print(wikiPage.title)
+    # collecting the search result summary
+    wikiSummary = str(wikiPage.summary)
+    return wikiSummary
+
+def listOrDictionary(var):
+    if isinstance(var,list):
+        return var[0]['plaintext']
+    else:
+        return var['plaintext']
+def search_wolframalpha(query):
+    # get the response from WolframAlpha of the query
+    response = wolframClient.query(query)
+
+    # @success: Wolfram Aplha was able to resolve the query
+    # @numpods: Number of results returned
+    # pod     : List of results. this can also contain subpods
+    if response['@success'] == 'false':
+        return "Could not compute"
+
+    # Query resolved
+    else:
+        result = ''
+        # Question
+        pod0 = response['pod'][0]
+        pod1 = response['pod'][1]
+
+        # May contain the answer, has the highest confidence value
+        # If it's primary, or has the title of result or defination, then it's the official result
+        if ('result' in pod1['@title'].lower()) or (pod1.get('@primary', 'false') == 'true') or ('definition' in pod1['@title'].lower()):
+            # Get the result
+            result = listOrDictionary(pod1['subpod'])
+            # remove the bracketed part from the result
+            return result.split('(')[0]
+        else:
+            question = listOrDictionary(pod0['subpod'])
+            # remove the bracketed part from the result
+            return result.split('(')[0]
+
+            # search in wikipedia
+            speakUp('Computing failed. Searching on wikipedia..')
+            return search_wikipedia(question)
+
+
+# Main loop
 
 if __name__ == "__main__":
     speakUp("Hello there... What can i do for you??")
@@ -70,22 +131,46 @@ if __name__ == "__main__":
     while True:
         # make a list of what i said
         query = takeCommand().lower().split()
+        print("QUERY:  ", query)
 
         # Checking for the Wakeup word first
         if query[0] == activationWord:
             query.pop(0)
+            print("QUERY:  ", query)
 
+            print(f'query---> {query}')
             # listing Commands
             if query[0] == "say":
                 if "hello" in query:
+                    print("hey")
                     speakUp("hye")
                 else:
-                    query.pop(0)    # removing the "say"
+                    query.pop(0)  # removing the "say"
                     speech = " ".join(query)
                     speakUp((speech))
 
             # navigating to websites
-            if query[0]== "go" and query[1] == "to":
+            if query[0] == "go" and query[1] == "to":
                 speakUp("opening...")
                 query = " ".join(query[2:])
                 webbrowser.get("chrome").open_new(query)
+
+            # searching on wikipedia
+            if query[0] == "wikipedia":
+                query = " ".join(query[1:])
+                speakUp("Searching on Wikipedia....")
+                # collecting the search result
+                result = search_wikipedia(query)
+                speakUp(result)
+
+            # Wolfram Alpha
+            if query[0] == 'compute' or query[0] == "computer":
+                query = " ".join(query[1:])
+                speakUp("Computing..")
+                try:
+                    # searching the query in wolframaplha
+                    result = search_wolframalpha(query)
+                    print("result: ", result)
+                    speakUp(result)
+                except:
+                    speakUp("Unable to compute.")
