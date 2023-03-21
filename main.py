@@ -27,7 +27,7 @@ wolframClient = wolframalpha.Client(appId)
 
 
 # function for speaking
-def speakUp(text, rate=160):  # rate at which the AI will say
+def speakUp(text: object, rate: object = 160) -> object:  # rate at which the AI will say
     engine.setProperty("rate", rate)
     # make the AI speak
     engine.say(text)
@@ -53,7 +53,7 @@ def takeCommand():
         print("Hoping i know you :<)")
         query = listener.recognize_google(inputSpeech, language="en_gb")
         print(f'So this is what you said-- {query}')
-        speakUp("I Know you.")
+        # speakUp("I Know you.")
 
     # if the speaker is not recognized
     except Exception as exception:
@@ -84,11 +84,14 @@ def search_wikipedia(query):
     wikiSummary = str(wikiPage.summary)
     return wikiSummary
 
+
 def listOrDictionary(var):
-    if isinstance(var,list):
+    if isinstance(var, list):
         return var[0]['plaintext']
     else:
         return var['plaintext']
+
+
 def search_wolframalpha(query):
     # get the response from WolframAlpha of the query
     response = wolframClient.query(query)
@@ -108,7 +111,8 @@ def search_wolframalpha(query):
 
         # May contain the answer, has the highest confidence value
         # If it's primary, or has the title of result or defination, then it's the official result
-        if ('result' in pod1['@title'].lower()) or (pod1.get('@primary', 'false') == 'true') or ('definition' in pod1['@title'].lower()):
+        if ('result' in pod1['@title'].lower()) or (pod1.get('@primary', 'false') == 'true') or (
+                'definition' in pod1['@title'].lower()):
             # Get the result
             result = listOrDictionary(pod1['subpod'])
             # remove the bracketed part from the result
@@ -174,3 +178,18 @@ if __name__ == "__main__":
                     speakUp(result)
                 except:
                     speakUp("Unable to compute.")
+
+            # Taking note
+            if query[0] == "log":
+                speakUp("Ready to take note.")
+                newNote = takeCommand().lower()
+                now = datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
+                # creating a file to take note
+                with open('note_%s.txt' % now, 'w') as newFile:
+                    newFile.write(newNote)
+                speakUp('Noted..')
+
+            # Exit
+            if query[0] == "exit":
+                speakUp('Goodbye.')
+                break
